@@ -1,0 +1,157 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum SpaceKind {
+  SUITE
+  LOBBY
+  POOL
+  BATH
+}
+
+enum BookingStatus {
+  PENDING // request received, not yet confirmed by the front desk
+  CONFIRMED
+  CHECKED_IN
+  CHECKED_OUT
+  CANCELLED
+}
+
+enum PaymentMethod {
+  BKASH
+  NAGAD
+  ROCKET
+  BANK_TRANSFER
+  PAY_AT_HOTEL
+}
+
+enum PaymentStatus {
+  UNPAID
+  AWAITING_VERIFICATION // guest submitted a mobile-banking TrxID
+  ADVANCE_PAID
+  PAID
+  REFUNDED
+}
+
+enum AdminRole {
+  OWNER
+  FRONT_DESK
+}
+
+/// A room type or public space. Text fields come in English (En) and Bengali (Bn).
+model Space {
+  id            String    @id @default(cuid())
+  slug          String    @unique
+  kind          SpaceKind
+  sortOrder     Int       @default(0)
+  published     Boolean   @default(true)
+
+  nameEn        String
+  nameBn        String
+  summaryEn     String
+  summaryBn     String
+  descriptionEn String
+  descriptionBn String
+  /// [{ labelEn, labelBn, valueEn, valueBn }]
+  facts         Json      @default("[]")
+
+  // Booking — only spaces with bookable = true and units > 0 can be booked.
+  bookable      Boolean   @default(false)
+  units         Int       @default(0) /// how many rooms of this type exist
+  maxGuests     Int       @default(2)
+  /// Whole taka per night.
+  nightlyRate   Int       @default(0)
+  /// Optional higher rate for weekend nights (see Settings.weekendNights).
+  weekendRate   Int?
+
+  // 3D walkthrough — all null until the space is captured.
+  splatUrl      String?
+  /// [x, y, z] Euler degrees
+  splatRotation Json?
+  posterUrl     String?
+  /// { position: [x,y,z], target: [x,y,z] }
+  startPose     Json?
+  /// [{ id, titleEn, titleBn, bodyEn, bodyBn, pose, marker? }]
+  viewpoints    Json      @default("[]")
+  /// { title, author, url, license }
+  credit        Json?
+
+  bookings      Booking[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Booking {
+  id            String        @id @default(cuid())
+  /// Short code the guest quotes on the phone and in the bKash reference, e.g. JHB-7K3Q2
+  reference     String        @unique
+  space         Space         @relation(fields: [spaceId], references: [id])
+  spaceId       String
+
+  checkIn       DateTime      @db.Date
+  checkOut      DateTime      @db.Date
+  nights        Int
+  adults        Int
+  children      Int           @default(0)
+
+  guestName     String
+  /// Normalised to +8801XXXXXXXXX
+  phone         String
+  email         String?
+  specialNote   String?
+  locale        String        @default("en")
+
+  // Money in whole taka, frozen at booking time so later rate changes don't alter it.
+  roomTotal     Int
+  serviceCharge Int
+  vat           Int
+  total         Int
+  advanceDue    Int
+
+  paymentMethod PaymentMethod
+  paymentStatus PaymentStatus @default(UNPAID)
+  transactionId String?
+  payerNumber   String?
+
+  status        BookingStatus @default(PENDING)
+  adminNote     String?
+
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([spaceId, checkIn, checkOut])
+  @@index([status])
+  @@index([phone])
+}
+
+/// Single row (id = 1) holding resort-wide booking settings.
+model Settings {
+  id                   Int      @id @default(1)
+  vatPercent           Decimal  @default(15) @db.Decimal(5, 2)
+  serviceChargePercent Decimal  @default(10) @db.Decimal(5, 2)
+  advancePercent       Int      @default(30)
+  /// JS weekday numbers of nights charged at the weekend rate. 4 = Thursday night, 5 = Friday night.
+  weekendNights        Int[]    @default([4, 5])
+  bkashNumber          String?
+  nagadNumber          String?
+  rocketNumber         String?
+  bankDetails          String?
+  hotline              String   @default("+8801700000000")
+  checkInTime          String   @default("14:00")
+  checkOutTime         String   @default("12:00")
+  updatedAt            DateTime @updatedAt
+}
+
+model AdminUser {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  name         String
+  passwordHash String
+  role         AdminRole @default(FRONT_DESK)
+  createdAt    DateTime  @default(now())
+}

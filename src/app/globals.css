@@ -1,0 +1,60 @@
+@import "tailwindcss";
+@import "@fontsource-variable/newsreader/opsz.css";
+@import "@fontsource-variable/newsreader/opsz-italic.css";
+@import "@fontsource-variable/hanken-grotesk";
+@import "@fontsource-variable/noto-serif-bengali";
+@import "@fontsource/hind-siliguri/400.css";
+@import "@fontsource/hind-siliguri/500.css";
+@import "@fontsource/hind-siliguri/600.css";
+
+@theme {
+  --color-shell: #eef0ea;
+  --color-mist: #dfe3da;
+  --color-casuarina: #1f3b32;
+  --color-casuarina-deep: #14231e;
+  --color-wisteria: #7a67ad;
+  --color-wisteria-deep: #63529a;
+  --color-teak: #8f6240;
+
+  /* Latin glyphs come from the first family, Bengali glyphs fall through to the second. */
+  --font-display: "Newsreader Variable", "Noto Serif Bengali Variable", Georgia, serif;
+  --font-sans: "Hanken Grotesk Variable", "Hind Siliguri", ui-sans-serif, system-ui, sans-serif;
+}
+
+html {
+  background: var(--color-casuarina-deep);
+}
+
+body {
+  font-family: var(--font-sans);
+  color: var(--color-casuarina);
+  background: var(--color-shell);
+  -webkit-font-smoothing: antialiased;
+}
+
+.font-display {
+  font-optical-sizing: auto;
+  letter-spacing: -0.01em;
+}
+
+/* One deliberate motion family: things the visitor opens slide or fade in. */
+@keyframes fade-in { from { opacity: 0; } }
+@keyframes sheet-in { from { transform: translateX(100%); } }
+@keyframes pop-in { from { opacity: 0; transform: translate(-50%, -48%) scale(0.98); } }
+.overlay[data-state="open"] { animation: fade-in 200ms ease-out; }
+.sheet[data-state="open"] { animation: sheet-in 320ms cubic-bezier(0.22, 1, 0.36, 1); }
+.pop[data-state="open"] { animation: pop-in 220ms ease-out; }
+
+@media (prefers-reduced-motion: reduce) {
+  .overlay[data-state="open"], .sheet[data-state="open"], .pop[data-state="open"] { animation: none; }
+}
+
+.marker { will-change: transform; }
+
+@keyframes tour-progress { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.tour-progress { animation-name: tour-progress; animation-timing-function: linear; animation-fill-mode: forwards; }
+@media (prefers-reduced-motion: reduce) { .tour-progress { animation: none; transform: scaleX(1); } }
+
+/* Bengali script has tall conjuncts and matras: give it more room and no negative tracking. */
+:lang(bn) { line-height: 1.7; }
+:lang(bn) .font-display { letter-spacing: 0; line-height: 1.25; }
